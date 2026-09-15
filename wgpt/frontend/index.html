@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description"
+        content="WeatherGPT — AI-powered conversational weather platform. Get real-time forecasts, alerts, and climate insights through natural language.">
+    <meta name="keywords" content="weather, forecast, AI, chatbot, WeatherGPT, Mausam, IMD, climate, alerts">
+    <meta name="theme-color" content="#0a0e1a">
+    <title>WeatherGPT — AI Weather Intelligence</title>
+    <link rel="stylesheet" href="/css/style.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+        integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+    <link rel="icon"
+        href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌦️</text></svg>">
+</head>
+
+<body>
+
+    <!-- Animated Background -->
+    <div class="bg-gradient" id="bg-gradient"></div>
+
+    <!-- Loading Overlay -->
+    <div class="loading-overlay" id="loading-overlay">
+        <div class="loading-spinner"></div>
+        <div class="loading-text">Fetching weather data...</div>
+    </div>
+
+    <!-- ═══ Header ═══ -->
+    <header class="header">
+        <div class="header-inner">
+            <a href="/" class="logo">
+                <div class="logo-icon">🌦️</div>
+                <span class="logo-text">WeatherGPT</span>
+                <span class="logo-badge">AI</span>
+            </a>
+
+            <div class="search-container">
+                <span class="search-icon">🔍</span>
+                <input type="text" class="search-bar" id="search-bar"
+                    placeholder="Search any city... (e.g., Mumbai, London, Tokyo)" autocomplete="off">
+                <div class="search-results" id="search-results"></div>
+            </div>
+
+            <button class="geo-btn" id="geo-btn" title="Use my location">
+                📍
+            </button>
+        </div>
+    </header>
+
+    <!-- ═══ Main Content ═══ -->
+    <main class="main-content">
+
+        <!-- Welcome Screen (shown initially) -->
+        <div class="welcome-screen" id="welcome-screen">
+            <div class="welcome-icon">🌦️</div>
+            <h1 class="welcome-title">Welcome to WeatherGPT</h1>
+            <p class="welcome-subtitle">
+                Your AI-powered weather intelligence platform. Get real-time forecasts,
+                alerts, and climate insights through natural conversation.
+            </p>
+            <div class="welcome-actions">
+                <button class="welcome-btn primary" onclick="requestGeolocation()">
+                    📍 Use My Location
+                </button>
+                <button class="welcome-btn secondary" onclick="loadQuickCity('New Delhi')">
+                    🏛️ New Delhi
+                </button>
+                <button class="welcome-btn secondary" onclick="loadQuickCity('Mumbai')">
+                    🌊 Mumbai
+                </button>
+                <button class="welcome-btn secondary" onclick="loadQuickCity('Bangalore')">
+                    🌿 Bangalore
+                </button>
+                <button class="welcome-btn secondary" onclick="loadQuickCity('London')">
+                    🇬🇧 London
+                </button>
+            </div>
+        </div>
+
+        <!-- Dashboard (hidden until city selected) -->
+        <div id="dashboard-screen" style="display:none; contents: inherit;">
+
+            <!-- Hero Section: Current Weather + Metrics -->
+            <section class="hero-section">
+                <div class="glass-card hero-card" id="hero-card">
+                    <!-- Rendered by JS -->
+                </div>
+                <div class="glass-card metrics-card">
+                    <div class="section-header">
+                        <h2 class="section-title">Weather Details</h2>
+                    </div>
+                    <div class="metrics-grid" id="metrics-grid">
+                        <!-- Rendered by JS -->
+                    </div>
+                </div>
+            </section>
+
+            <!-- Hourly Forecast -->
+            <section class="glass-card hourly-section">
+                <div class="section-header">
+                    <h2 class="section-title">Hourly Forecast</h2>
+                    <span class="section-subtitle">Next 36 hours</span>
+                </div>
+                <div class="hourly-scroll" id="hourly-scroll">
+                    <!-- Rendered by JS -->
+                </div>
+            </section>
+
+            <!-- 5-Day Forecast -->
+            <section class="glass-card forecast-section">
+                <div class="section-header">
+                    <h2 class="section-title">5-Day Forecast</h2>
+                    <span class="section-subtitle">Daily overview</span>
+                </div>
+                <div class="forecast-scroll" id="forecast-scroll">
+                    <!-- Rendered by JS -->
+                </div>
+            </section>
+
+            <!-- Weather Map -->
+            <section class="glass-card map-section">
+                <div class="section-header">
+                    <h2 class="section-title">🗺️ Weather Map</h2>
+                    <span class="section-subtitle">Current Location</span>
+                </div>
+                <div id="weather-map" class="map-container"></div>
+            </section>
+
+            <!-- Weather Alerts -->
+            <section class="glass-card alerts-section">
+                <div class="section-header">
+                    <h2 class="section-title">
+                        ⚠️ Weather Alerts
+                        <span class="alert-badge red" id="alerts-count" style="display:none; margin-left:8px;"></span>
+                    </h2>
+                    <span class="section-subtitle">Color-coded severity</span>
+                </div>
+                <div id="alerts-container">
+                    <div class="no-alerts">
+                        <div class="no-alerts-icon">✅</div>
+                        <div class="no-alerts-text">Search for a city to view alerts</div>
+                    </div>
+                </div>
+            </section>
+
+        </div>
+    </main>
+
+    <!-- ═══ Chat FAB ═══ -->
+    <button class="chat-fab" id="chat-fab" title="Chat with WeatherGPT AI">
+        💬
+    </button>
+
+    <!-- ═══ Chat Panel ═══ -->
+    <div class="chat-panel" id="chat-panel">
+        <div class="chat-header">
+            <div class="chat-header-info">
+                <div class="chat-avatar">🤖</div>
+                <div>
+                    <div class="chat-header-title">WeatherGPT AI</div>
+                    <div class="chat-header-status">Online</div>
+                    <select id="chat-language" class="chat-language" aria-label="Select chatbot language"
+                        style="display: none;"></select>
+                </div>
+            </div>
+
+            <button class="chat-close-btn" id="chat-close-btn" title="Close chat">✕</button>
+        </div>
+
+        <div class="chat-messages" id="chat-messages">
+            <!-- Messages rendered by JS -->
+            <div class="typing-indicator" id="typing-indicator">
+                <div class="typing-dot"></div>
+                <div class="typing-dot"></div>
+                <div class="typing-dot"></div>
+            </div>
+        </div>
+
+        <div class="chat-quick-actions" style="display: flex !important; gap: 8px; flex-wrap: wrap;">
+            <button class="quick-chip" data-message="What's the weather right now?">🌡️ Current Weather</button>
+            <button class="quick-chip" data-message="Show me the 5-day forecast">📅 Forecast</button>
+            <button class="quick-chip" data-message="Are there any weather alerts?">⚠️ Alerts</button>
+            <button class="quick-chip" data-message="Will it rain today?">🌧️ Rain?</button>
+            <button class="quick-chip" data-message="Tell me about the monsoon season in India">🌊 Monsoon</button>
+        </div>
+
+        <div class="chat-input-area">
+            <textarea class="chat-input" id="chat-input" placeholder="Ask about the weather..." rows="1"></textarea>
+            <button class="chat-send-btn" id="chat-send-btn" title="Send message">➤</button>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+        integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    <script src="/js/app.js"></script>
+    <script src="/js/chat.js"></script>
+
+</body>
+
+</html>
