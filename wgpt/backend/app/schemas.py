@@ -56,6 +56,7 @@ class ForecastItem(BaseModel):
     conditions: list[WeatherCondition]
     icon_url: str
     pop: float = Field(0, description="Probability of precipitation (0-1)")
+    visibility: int = Field(10000, description="Visibility in meters")
 
 
 class ForecastResponse(BaseModel):
@@ -94,6 +95,8 @@ class ChatRequest(BaseModel):
     message: str = Field(..., min_length=1, max_length=2000, description="User's message")
     session_id: Optional[str] = Field(None, description="Session ID for conversation continuity")
     city: Optional[str] = None
+    language: Optional[str] = Field("en", description="Response language: en, hi, gu")
+    advisory_type: Optional[str] = Field("general", description="Target advisory mode: general, agriculture, aviation, marine")
 
 
 class ChatResponse(BaseModel):

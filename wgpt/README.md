@@ -53,12 +53,13 @@ pip install -r requirements.txt
 
 ```bash
 cd backend
-uvicorn app.main:app --reload --port 8000
+uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
 ```
 
 ### 5. Open the App
 
-Navigate to [http://localhost:8000](http://localhost:8000)
+- **On your PC**: Navigate to [http://localhost:8000](http://localhost:8000)
+- **On Android or iPhone**: Connect to the same Wi-Fi and open `http://<your-pc-ip>:8000` (e.g. `http://172.24.28.219:8000`)
 
 ## API Endpoints
 

@@ -1,60 +1,25 @@
 """
 WeatherGPT — Alerts Router
-
-Endpoints for forecast-based weather alerts.
+Endpoints for weather alerts and warnings.
 """
 
-from typing import Optional
-
 from fastapi import APIRouter, HTTPException, Query
+from app.schemas import AlertsResponse
+from app.services import weather_service
 
-from app.services.nwp_service import (
-    get_gfs_forecast,
-    summarize_gfs_forecast,
-)
-from app.services.alert_service import detect_gfs_alert
+router = APIRouter(prefix="/api/alerts", tags=["Alerts"])
 
 
-router = APIRouter(
-    prefix="/api/alerts",
-    tags=["Alerts"],
-)
-
-
-@router.get("")
+@router.get("", response_model=AlertsResponse)
 async def get_alerts(
     lat: float = Query(..., description="Latitude"),
     lon: float = Query(..., description="Longitude"),
-    city: Optional[str] = Query(
-        default=None,
-        description="City name"
-    ),
 ):
     """
-    Detect forecast-based weather alerts using NOAA GFS
-    data received through Open-Meteo.
-
-    These are not official IMD warnings.
+    Get active weather alerts for a location.
+    Returns color-coded severity: Red (take action), Orange (be prepared), Yellow (stay updated).
     """
-
     try:
-        forecast_data = await get_gfs_forecast(
-            latitude=lat,
-            longitude=lon,
-        )
-
-        forecast_summary = summarize_gfs_forecast(
-            forecast_data
-        )
-
-        return detect_gfs_alert(
-            summary=forecast_summary,
-            city=city,
-        )
-
-    except Exception as error:
-        raise HTTPException(
-            status_code=502,
-            detail=f"Failed to fetch forecast alerts: {error}",
-        )
-        
+        return await weather_service.get_alerts(lat=lat, lon=lon)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to fetch alerts: {str(e)}")

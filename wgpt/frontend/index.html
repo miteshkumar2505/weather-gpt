@@ -12,8 +12,10 @@
     <link rel="stylesheet" href="/css/style.css">
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
         integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
-    <link rel="icon"
-        href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🌦️</text></svg>">
+    <link rel="icon" type="image/png" href="/assets/favicon.png?v=2">
+    <link rel="apple-touch-icon" href="/assets/apple-touch-icon.png?v=2">
+    <link rel="manifest" href="/manifest.json">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 
 <body>
@@ -31,7 +33,9 @@
     <header class="header">
         <div class="header-inner">
             <a href="/" class="logo">
-                <div class="logo-icon">🌦️</div>
+                <div class="logo-icon">
+                    <img src="/assets/icon-192.png?v=2" alt="WeatherGPT Logo">
+                </div>
                 <span class="logo-text">WeatherGPT</span>
                 <span class="logo-badge">AI</span>
             </a>
@@ -39,8 +43,20 @@
             <div class="search-container">
                 <span class="search-icon">🔍</span>
                 <input type="text" class="search-bar" id="search-bar"
-                    placeholder="Search any city... (e.g., Mumbai, London, Tokyo)" autocomplete="off">
+                    placeholder="Search any city... (e.g., Mumbai, London, Tokyo)" autocomplete="off" data-i18n-placeholder="searchPlaceholder">
+                <button class="voice-search-btn" id="voice-search-btn" title="Voice Search (Speak city name)">
+                    🎤
+                </button>
                 <div class="search-results" id="search-results"></div>
+            </div>
+
+            <!-- Regional Language Switcher -->
+            <div class="lang-switcher-container">
+                <select id="lang-select" class="lang-select" title="Switch Language / भाषा बदलें / ભાષા બદલો">
+                    <option value="en">🇬🇧 English</option>
+                    <option value="hi">🇮🇳 हिन्दी (Hindi)</option>
+                    <option value="gu">🇮🇳 ગુજરાતી (Gujarati)</option>
+                </select>
             </div>
 
             <button class="geo-btn" id="geo-btn" title="Use my location">
@@ -54,14 +70,16 @@
 
         <!-- Welcome Screen (shown initially) -->
         <div class="welcome-screen" id="welcome-screen">
-            <div class="welcome-icon">🌦️</div>
-            <h1 class="welcome-title">Welcome to WeatherGPT</h1>
-            <p class="welcome-subtitle">
+            <div class="welcome-icon">
+                <img src="/assets/icon-512.png?v=2" alt="WeatherGPT Logo" style="width: 88px; height: 88px; border-radius: 22px; object-fit: cover; box-shadow: 0 12px 32px rgba(56, 189, 248, 0.35);">
+            </div>
+            <h1 class="welcome-title" data-i18n="welcomeTitle">Welcome to WeatherGPT</h1>
+            <p class="welcome-subtitle" data-i18n="welcomeSubtitle">
                 Your AI-powered weather intelligence platform. Get real-time forecasts,
                 alerts, and climate insights through natural conversation.
             </p>
             <div class="welcome-actions">
-                <button class="welcome-btn primary" onclick="requestGeolocation()">
+                <button class="welcome-btn primary" onclick="requestGeolocation()" data-i18n="useMyLocation">
                     📍 Use My Location
                 </button>
                 <button class="welcome-btn secondary" onclick="loadQuickCity('New Delhi')">
@@ -89,7 +107,7 @@
                 </div>
                 <div class="glass-card metrics-card">
                     <div class="section-header">
-                        <h2 class="section-title">Weather Details</h2>
+                        <h2 class="section-title" data-i18n="weatherDetails">Weather Details</h2>
                     </div>
                     <div class="metrics-grid" id="metrics-grid">
                         <!-- Rendered by JS -->
@@ -100,19 +118,80 @@
             <!-- Hourly Forecast -->
             <section class="glass-card hourly-section">
                 <div class="section-header">
-                    <h2 class="section-title">Hourly Forecast</h2>
-                    <span class="section-subtitle">Next 36 hours</span>
+                    <h2 class="section-title" data-i18n="hourlyForecast">Hourly Forecast</h2>
+                    <span class="section-subtitle" data-i18n="next36Hours">Next 36 hours</span>
                 </div>
                 <div class="hourly-scroll" id="hourly-scroll">
                     <!-- Rendered by JS -->
                 </div>
             </section>
 
+            <!-- 👁️ Visibility Trend Graph -->
+            <section class="glass-card visibility-section">
+                <div class="section-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 12px;">
+                    <div>
+                        <h2 class="section-title" data-i18n="visibilityGraphTitle">👁️ Visibility Trend Graph</h2>
+                        <span class="section-subtitle" data-i18n="visibilityGraphSubtitle">Hourly sight distance & atmospheric transparency</span>
+                    </div>
+                    <div class="visibility-badge" id="visibility-status-badge">
+                        <span class="status-dot"></span>
+                        <span id="visibility-status-text">-- km</span>
+                    </div>
+                </div>
+                <div class="visibility-stats-row" id="visibility-stats-row">
+                    <div class="visibility-stat-chip">
+                        <span class="chip-label" data-i18n="currentSight">Current</span>
+                        <span class="chip-val" id="vis-current">-- km</span>
+                    </div>
+                    <div class="visibility-stat-chip">
+                        <span class="chip-label" data-i18n="minSight">Min Sight</span>
+                        <span class="chip-val" id="vis-min">-- km</span>
+                    </div>
+                    <div class="visibility-stat-chip">
+                        <span class="chip-label" data-i18n="maxSight">Max Sight</span>
+                        <span class="chip-val" id="vis-max">-- km</span>
+                    </div>
+                    <div class="visibility-stat-chip">
+                        <span class="chip-label" data-i18n="avgClarity">Avg Clarity</span>
+                        <span class="chip-val" id="vis-avg">-- km</span>
+                    </div>
+                </div>
+                <div class="chart-wrapper" style="position: relative; height: 260px; width: 100%; margin-top: 16px;">
+                    <canvas id="visibility-chart"></canvas>
+                </div>
+            </section>
+
+            <!-- 📊 Weather Breakdown Pie Charts -->
+            <section class="glass-card pie-chart-section" style="grid-column: 1 / -1;">
+                <div class="section-header">
+                    <h2 class="section-title" data-i18n="weatherBreakdownTitle">📊 Weather Breakdown & Atmospheric Distribution</h2>
+                    <span class="section-subtitle" data-i18n="weatherBreakdownSubtitle">Forecast condition composition & real-time sky composition</span>
+                </div>
+
+                <div class="pie-charts-grid" style="display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 24px; margin-top: 16px;">
+                    <!-- Chart 1: Forecast Condition Distribution -->
+                    <div class="pie-card" style="background: rgba(255, 255, 255, 0.03); border: 1px solid var(--border-glass); border-radius: var(--radius-md); padding: 16px; text-align: center;">
+                        <h3 style="font-size: 0.95rem; color: var(--text-accent); margin-bottom: 12px; font-weight: 600;" data-i18n="forecastConditionTitle">🌤️ Forecast Conditions Breakdown</h3>
+                        <div style="position: relative; height: 230px; width: 100%;">
+                            <canvas id="condition-pie-chart"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- Chart 2: Atmospheric Composition -->
+                    <div class="pie-card" style="background: rgba(255, 255, 255, 0.03); border: 1px solid var(--border-glass); border-radius: var(--radius-md); padding: 16px; text-align: center;">
+                        <h3 style="font-size: 0.95rem; color: var(--text-accent); margin-bottom: 12px; font-weight: 600;" data-i18n="atmosphericCompositionTitle">💧 Atmospheric & Cloud Composition</h3>
+                        <div style="position: relative; height: 230px; width: 100%;">
+                            <canvas id="atmospheric-pie-chart"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
             <!-- 5-Day Forecast -->
             <section class="glass-card forecast-section">
                 <div class="section-header">
-                    <h2 class="section-title">5-Day Forecast</h2>
-                    <span class="section-subtitle">Daily overview</span>
+                    <h2 class="section-title" data-i18n="fiveDayForecast">5-Day Forecast</h2>
+                    <span class="section-subtitle" data-i18n="dailyOverview">Daily overview</span>
                 </div>
                 <div class="forecast-scroll" id="forecast-scroll">
                     <!-- Rendered by JS -->
@@ -121,26 +200,31 @@
 
             <!-- Weather Map -->
             <section class="glass-card map-section">
-                <div class="section-header">
-                    <h2 class="section-title">🗺️ Weather Map</h2>
-                    <span class="section-subtitle">Current Location</span>
+                <div class="section-header" style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 8px;">
+                    <div>
+                        <h2 class="section-title" data-i18n="interactiveMapTitle">🗺️ Interactive Weather Map</h2>
+                        <span class="section-subtitle" data-i18n="interactiveMapSubtitle">Click anywhere on the map to pick a location & get real-time alerts</span>
+                    </div>
+                    <span style="background: rgba(59, 130, 246, 0.18); border: 1px solid rgba(59, 130, 246, 0.4); color: #60a5fa; padding: 4px 12px; border-radius: 999px; font-size: 0.78rem; font-weight: 600;" data-i18n="clickMapHint">
+                        👇 Click map to select location
+                    </span>
                 </div>
-                <div id="weather-map" class="map-container"></div>
+                <div id="weather-map" class="map-container" style="cursor: crosshair;"></div>
             </section>
 
             <!-- Weather Alerts -->
             <section class="glass-card alerts-section">
                 <div class="section-header">
                     <h2 class="section-title">
-                        ⚠️ Weather Alerts
+                        <span data-i18n="weatherAlertsTitle">⚠️ Weather Alerts</span>
                         <span class="alert-badge red" id="alerts-count" style="display:none; margin-left:8px;"></span>
                     </h2>
-                    <span class="section-subtitle">Color-coded severity</span>
+                    <span class="section-subtitle" data-i18n="colorCodedSeverity">Color-coded severity</span>
                 </div>
                 <div id="alerts-container">
                     <div class="no-alerts">
                         <div class="no-alerts-icon">✅</div>
-                        <div class="no-alerts-text">Search for a city to view alerts</div>
+                        <div class="no-alerts-text" data-i18n="noAlertsText">Search for a city to view alerts</div>
                     </div>
                 </div>
             </section>
@@ -157,16 +241,23 @@
     <div class="chat-panel" id="chat-panel">
         <div class="chat-header">
             <div class="chat-header-info">
-                <div class="chat-avatar">🤖</div>
+                <div class="chat-avatar" style="overflow: hidden; padding: 0;">
+                    <img src="/assets/icon-192.png?v=2" alt="WeatherGPT" style="width: 100%; height: 100%; object-fit: cover;">
+                </div>
                 <div>
                     <div class="chat-header-title">WeatherGPT AI</div>
-                    <div class="chat-header-status">Online</div>
+                    <div class="chat-header-status">Online · Voice Enabled</div>
                     <select id="chat-language" class="chat-language" aria-label="Select chatbot language"
                         style="display: none;"></select>
                 </div>
             </div>
 
-            <button class="chat-close-btn" id="chat-close-btn" title="Close chat">✕</button>
+            <div class="chat-header-actions" style="display: flex; gap: 8px; align-items: center;">
+                <button class="chat-action-btn" id="tts-toggle-btn" title="Toggle Auto Read-Aloud Voice">
+                    🔊
+                </button>
+                <button class="chat-close-btn" id="chat-close-btn" title="Close chat">✕</button>
+            </div>
         </div>
 
         <div class="chat-messages" id="chat-messages">
@@ -178,16 +269,36 @@
             </div>
         </div>
 
-        <div class="chat-quick-actions" style="display: flex !important; gap: 8px; flex-wrap: wrap;">
+        <!-- Specialized Advisory Mode Selector -->
+        <div class="chat-advisory-tabs" id="chat-advisory-tabs" role="tablist" aria-label="Target Advisory Mode">
+            <button class="advisory-tab active" data-mode="general" role="tab" aria-selected="true" title="General Weather Forecast & Inquiries">
+                <span class="tab-icon">🌐</span> <span data-i18n="advisoryGeneral">General</span>
+            </button>
+            <button class="advisory-tab" data-mode="agriculture" role="tab" aria-selected="false" title="Agriculture & Agromet Advisory for Farmers">
+                <span class="tab-icon">🌾</span> <span data-i18n="advisoryAgriculture">Agriculture</span>
+            </button>
+            <button class="advisory-tab" data-mode="aviation" role="tab" aria-selected="false" title="Aviation Weather Briefing & Flight Rules">
+                <span class="tab-icon">✈️</span> <span data-i18n="advisoryAviation">Aviation</span>
+            </button>
+            <button class="advisory-tab" data-mode="marine" role="tab" aria-selected="false" title="Marine Sea State & Fishermen Advisory">
+                <span class="tab-icon">⚓</span> <span data-i18n="advisoryMarine">Marine</span>
+            </button>
+        </div>
+
+        <div class="chat-quick-actions" id="chat-quick-actions" style="display: flex !important; gap: 8px; flex-wrap: wrap;">
             <button class="quick-chip" data-message="What's the weather right now?">🌡️ Current Weather</button>
+            <button class="quick-chip" data-message="Show me the visibility forecast">👁️ Visibility</button>
             <button class="quick-chip" data-message="Show me the 5-day forecast">📅 Forecast</button>
             <button class="quick-chip" data-message="Are there any weather alerts?">⚠️ Alerts</button>
             <button class="quick-chip" data-message="Will it rain today?">🌧️ Rain?</button>
-            <button class="quick-chip" data-message="Tell me about the monsoon season in India">🌊 Monsoon</button>
+            <button class="quick-chip" data-message="Explain general weather requirements for agriculture, aviation, and marine">📋 3 Sectors Overview</button>
         </div>
 
         <div class="chat-input-area">
-            <textarea class="chat-input" id="chat-input" placeholder="Ask about the weather..." rows="1"></textarea>
+            <button class="chat-voice-btn" id="chat-voice-btn" title="Speak to WeatherGPT (Voice Assistant)">
+                🎤
+            </button>
+            <textarea class="chat-input" id="chat-input" placeholder="Ask about weather or click 🎤 to speak..." rows="1"></textarea>
             <button class="chat-send-btn" id="chat-send-btn" title="Send message">➤</button>
         </div>
     </div>

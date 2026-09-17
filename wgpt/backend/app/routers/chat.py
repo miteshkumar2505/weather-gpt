@@ -21,6 +21,8 @@ async def chat(request: ChatRequest):
             message=request.message,
             session_id=request.session_id,
             city=request.city,
+            language=request.language or "en",
+            advisory_type=request.advisory_type or "general",
         )
         return ChatResponse(
             reply=reply,

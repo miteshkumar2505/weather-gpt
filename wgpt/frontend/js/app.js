@@ -12,9 +12,209 @@ const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', '
 window.currentCity = '';
 window.currentLat = null;
 window.currentLon = null;
+window.currentLang = localStorage.getItem('weathergpt_lang') || 'en';
+window.lastWeatherData = null;
 let searchTimeout = null;
 let weatherMap = null;
 let mapMarker = null;
+let visibilityChart = null;
+let conditionPieChart = null;
+let atmosphericPieChart = null;
+
+// ── i18n Translations ──────────────────────────────────────────
+const TRANSLATIONS = {
+    en: {
+        searchPlaceholder: "Search any city... (e.g., Mumbai, London, Tokyo)",
+        useMyLocation: "📍 Use My Location",
+        welcomeTitle: "Welcome to WeatherGPT",
+        welcomeSubtitle: "Your AI-powered weather intelligence platform. Get real-time forecasts, alerts, and climate insights through natural conversation.",
+        weatherDetails: "Weather Details",
+        hourlyForecast: "Hourly Forecast",
+        next36Hours: "Next 36 hours",
+        visibilityGraphTitle: "👁️ Visibility Trend Graph",
+        visibilityGraphSubtitle: "Hourly sight distance & atmospheric transparency",
+        currentSight: "Current",
+        minSight: "Min Sight",
+        maxSight: "Max Sight",
+        avgClarity: "Avg Clarity",
+        weatherBreakdownTitle: "📊 Weather Breakdown & Atmospheric Distribution",
+        weatherBreakdownSubtitle: "Forecast condition composition & real-time sky composition",
+        forecastConditionTitle: "🌤️ Forecast Conditions Breakdown",
+        atmosphericCompositionTitle: "💧 Atmospheric & Cloud Composition",
+        fiveDayForecast: "5-Day Forecast",
+        dailyOverview: "Daily overview",
+        interactiveMapTitle: "🗺️ Interactive Weather Map",
+        interactiveMapSubtitle: "Click anywhere on the map to pick a location & get real-time alerts",
+        clickMapHint: "👇 Click map to select location",
+        weatherAlertsTitle: "⚠️ Weather Alerts",
+        colorCodedSeverity: "Color-coded severity",
+        noAlertsText: "No extreme weather alerts active for this location",
+        humidity: "💧 Humidity",
+        wind: "💨 Wind",
+        pressure: "🌡️ Pressure",
+        visibility: "👁️ Visibility",
+        clouds: "☁️ Clouds",
+        feelsLike: "🌡️ Feels Like",
+        sunrise: "Sunrise",
+        sunset: "Sunset",
+        chatTitle: "WeatherGPT AI",
+        chatStatus: "Online · Multilingual & Voice Enabled",
+        chatPlaceholder: "Ask about weather or click 🎤 to speak...",
+        quickCurrent: "🌡️ Current Weather",
+        quickVisibility: "👁️ Visibility",
+        quickForecast: "📅 Forecast",
+        quickAlerts: "⚠️ Alerts",
+        quickRain: "🌧️ Rain?",
+        advisoryGeneral: "General",
+        advisoryAgriculture: "Agriculture",
+        advisoryAviation: "Aviation",
+        advisoryMarine: "Marine",
+    },
+    hi: {
+        searchPlaceholder: "कोई भी शहर खोजें... (जैसे मुंबई, दिल्ली, जयपुर)",
+        useMyLocation: "📍 मेरे स्थान का उपयोग करें",
+        welcomeTitle: "वेदरजीपीटी (WeatherGPT) में आपका स्वागत है",
+        welcomeSubtitle: "आपका एआई-संचालित मौसम मंच। प्राकृतिक बातचीत के माध्यम से सटीक पूर्वानुमान, अलर्ट और अंतर्दृष्टि प्राप्त करें।",
+        weatherDetails: "मौसम विवरण",
+        hourlyForecast: "प्रति घंटा पूर्वानुमान",
+        next36Hours: "अगले 36 घंटे",
+        visibilityGraphTitle: "👁️ दृश्यता प्रवृत्ति ग्राफ (Visibility Graph)",
+        visibilityGraphSubtitle: "प्रति घंटा दृश्यता दूरी और वायुमंडलीय पारदर्शिता",
+        currentSight: "वर्तमान",
+        minSight: "न्यूनतम दृश्यता",
+        maxSight: "अधिकतम दृश्यता",
+        avgClarity: "औसत स्पष्टता",
+        weatherBreakdownTitle: "📊 मौसम विभाजन और वायुमंडलीय वितरण",
+        weatherBreakdownSubtitle: "पूर्वानुमान स्थिति संरचना और वास्तविक समय आकाश संरचना",
+        forecastConditionTitle: "🌤️ पूर्वानुमान स्थिति विभाजन",
+        atmosphericCompositionTitle: "💧 वायुमंडलीय और बादल संरचना",
+        fiveDayForecast: "5-दिवसीय पूर्वानुमान",
+        dailyOverview: "दैनिक अवलोकन",
+        interactiveMapTitle: "🗺️ इंटरेक्टिव मौसम मानचित्र",
+        interactiveMapSubtitle: "स्थान चुनने और अलर्ट देखने के लिए मानचित्र पर कहीं भी क्लिक करें",
+        clickMapHint: "👇 स्थान चुनने के लिए क्लिक करें",
+        weatherAlertsTitle: "⚠️ मौसम चेतावनी एवं अलर्ट",
+        colorCodedSeverity: "रंग-कोडित गंभीरता",
+        noAlertsText: "इस स्थान के लिए कोई गंभीर मौसम अलर्ट सक्रिय नहीं है",
+        humidity: "💧 आर्द्रता",
+        wind: "💨 हवा",
+        pressure: "🌡️ दबाव",
+        visibility: "👁️ दृश्यता",
+        clouds: "☁️ बादल",
+        feelsLike: "🌡️ महसूस तापमान",
+        sunrise: "सूर्योदय",
+        sunset: "सूर्यास्त",
+        chatTitle: "वेदरजीपीटी एआई",
+        chatStatus: "ऑनलाइन · बहुभाषी और आवाज सक्षम",
+        chatPlaceholder: "मौसम के बारे में पूछें या बोलने के लिए 🎤 क्लिक करें...",
+        quickCurrent: "🌡️ वर्तमान मौसम",
+        quickVisibility: "👁️ दृश्यता",
+        quickForecast: "📅 पूर्वानुमान",
+        quickAlerts: "⚠️ अलर्ट",
+        quickRain: "🌧️ क्या बारिश होगी?",
+        advisoryGeneral: "सामान्य",
+        advisoryAgriculture: "कृषि",
+        advisoryAviation: "विमानन",
+        advisoryMarine: "समुद्री",
+    },
+    gu: {
+        searchPlaceholder: "કોઈપણ શહેર શોધો... (દા.ત., અમદાવાદ, સુરત, મુંબઈ)",
+        useMyLocation: "📍 મારું સ્થાન વાપરો",
+        welcomeTitle: "વેધરજીપીટી (WeatherGPT) માં આપનું સ્વાગત છે",
+        welcomeSubtitle: "તમારું AI-સંચાલિત હવામાન ઇન્ટેલિજન્સ પ્લેટફોર્મ. વાર્તાલાપ દ્વારા રીઅલ-ટાઇમ અંદાજ, અલર્ટ્સ અને માહિતી મેળવો.",
+        weatherDetails: "હવામાન વિગતો",
+        hourlyForecast: "કલાકદીઠ હવામાન અંદાજ",
+        next36Hours: "આગામી 36 કલાક",
+        visibilityGraphTitle: "👁️ દૃશ્યતા વલણ ગ્રાફ (Visibility Graph)",
+        visibilityGraphSubtitle: "કલાકદીઠ દૃશ્યતા અંતર અને વાતાવરણીય સ્પષ્ટતા",
+        currentSight: "વર્તમાન",
+        minSight: "ન્યૂનતમ દૃશ્યતા",
+        maxSight: "મહત્તમ દૃશ્યતા",
+        avgClarity: "સરેરાશ સ્પષ્ટતા",
+        weatherBreakdownTitle: "📊 હવામાન વિભાજન અને વાતાવરણીય વિતરણ",
+        weatherBreakdownSubtitle: "હવામાન સ્થિતિ રચના અને રીઅલ-ટાઇમ આકાશ વિતરણ",
+        forecastConditionTitle: "🌤️ હવામાન સ્થિતિ વિભાજન",
+        atmosphericCompositionTitle: "💧 વાતાવરણીય અને વાદળ રચના",
+        fiveDayForecast: "5-દિવસનો હવામાન અંદાજ",
+        dailyOverview: "દૈનિક ઝાંખી",
+        interactiveMapTitle: "🗺️ ઇન્ટરેક્ટિવ હવામાન નકશો",
+        interactiveMapSubtitle: "સ્થળ પસંદ કરવા અને અલર્ટ જોવા માટે નકશા પર ગમે ત્યાં ક્લિક કરો",
+        clickMapHint: "👇 સ્થળ પસંદ કરવા નકશા પર ક્લિક કરો",
+        weatherAlertsTitle: "⚠️ હવામાન અલર્ટ્સ અને ચેતવણી",
+        colorCodedSeverity: "રંગ-કોડેડ ગંભીરતા",
+        noAlertsText: "આ સ્થળ માટે કોઈ ગંભીર હવામાન અલર્ટ સક્રિય નથી",
+        humidity: "💧 ભેજ",
+        wind: "💨 પવન",
+        pressure: "🌡️ દબાણ",
+        visibility: "👁️ દૃશ્યતા",
+        clouds: "☁️ વાદળો",
+        feelsLike: "🌡️ અનુભવાતું તાપમાન",
+        sunrise: "સૂર્યોદય",
+        sunset: "સૂર્યાસ્ત",
+        chatTitle: "વેધરજીપીટી AI",
+        chatStatus: "ઓનલાઇન · બહુભાષી અને અવાજ સક્ષમ",
+        chatPlaceholder: "હવામાન વિશે પૂછો અથવા બોલવા માટે 🎤 ક્લિક કરો...",
+        quickCurrent: "🌡️ વર્તમાન હવામાન",
+        quickVisibility: "👁️ દૃશ્યતા",
+        quickForecast: "📅 હવામાન અંદાજ",
+        quickAlerts: "⚠️ અલર્ટ્સ",
+        quickRain: "🌧️ શું વરસાદ પડશે?",
+        advisoryGeneral: "સામાન્ય",
+        advisoryAgriculture: "કૃષિ",
+        advisoryAviation: "ઉડ્ડયન",
+        advisoryMarine: "દરિયાઈ",
+    }
+};
+
+function t(key) {
+    const langDict = TRANSLATIONS[window.currentLang] || TRANSLATIONS.en;
+    return langDict[key] || TRANSLATIONS.en[key] || key;
+}
+
+function applyLanguage(lang) {
+    window.currentLang = lang;
+    localStorage.setItem('weathergpt_lang', lang);
+
+    const langSelect = document.getElementById('lang-select');
+    if (langSelect) langSelect.value = lang;
+
+    document.querySelectorAll('[data-i18n]').forEach(el => {
+        const key = el.getAttribute('data-i18n');
+        if (key && t(key)) {
+            el.textContent = t(key);
+        }
+    });
+
+    document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+        const key = el.getAttribute('data-i18n-placeholder');
+        if (key && t(key)) {
+            el.placeholder = t(key);
+        }
+    });
+
+    const chatInput = document.getElementById('chat-input');
+    if (chatInput) {
+        chatInput.placeholder = t('chatPlaceholder');
+    }
+
+    if (typeof window.updateChatLanguageUI === 'function') {
+        window.updateChatLanguageUI(lang);
+    }
+}
+
+function setupLanguageSwitcher() {
+    const langSelect = document.getElementById('lang-select');
+    if (langSelect) {
+        langSelect.value = window.currentLang;
+        langSelect.addEventListener('change', (e) => {
+            applyLanguage(e.target.value);
+            if (window.lastWeatherData) {
+                renderMetrics(window.lastWeatherData);
+            }
+        });
+    }
+    applyLanguage(window.currentLang);
+}
 
 // ── DOM Elements ───────────────────────────────────────────────
 const searchBar = document.getElementById('search-bar');
@@ -30,6 +230,8 @@ document.addEventListener('DOMContentLoaded', () => {
     hideLoading();
     setupSearch();
     setupGeolocation();
+    setupVoiceSearch();
+    setupLanguageSwitcher();
 });
 
 // ── Loading ────────────────────────────────────────────────────
@@ -151,9 +353,7 @@ async function loadWeatherByCity(city) {
         window.currentCity = weather.city;
         window.currentLat = weather.lat;
         window.currentLon = weather.lon;
-        if (typeof window.checkWeatherAlerts === 'function') {
-            window.checkWeatherAlerts();
-        }
+
         renderDashboard(weather, forecast);
         loadAlerts(weather.lat, weather.lon);
     } catch (err) {
@@ -181,9 +381,6 @@ async function loadWeather(lat, lon) {
         window.currentCity = weather.city;
         window.currentLat = weather.lat;
         window.currentLon = weather.lon;
-        if (typeof window.checkWeatherAlerts === 'function') {
-            window.checkWeatherAlerts();
-        }
         searchBar.value = `${weather.city}, ${weather.country}`;
 
         renderDashboard(weather, forecast);
@@ -229,6 +426,8 @@ function renderDashboard(weather, forecast) {
     renderHeroCard(weather);
     renderMetrics(weather);
     renderHourlyForecast(forecast);
+    renderVisibilityGraph(weather, forecast);
+    renderWeatherPieCharts(weather, forecast);
     renderDailyForecast(forecast);
     renderMap(weather.lat, weather.lon, weather.city);
 }
@@ -267,9 +466,7 @@ function renderHeroCard(weather) {
 
     const sunriseTime = formatUnixTime(weather.sunrise, weather.timezone);
     const sunsetTime = formatUnixTime(weather.sunset, weather.timezone);
-    console.log("WEATHER DATA RECEIVED BY FRONTEND:", weather);
-    const conditionText = weather.conditions?.[0]?.description || 'N/A';
-    console.log("CONDITION TEXT:", conditionText);
+
     document.getElementById('hero-card').innerHTML = `
         <div class="hero-location">
             <span>📍</span>
@@ -283,13 +480,11 @@ function renderHeroCard(weather) {
                     <span class="hero-temp">${Math.round(weather.temperature)}</span>
                     <span class="hero-temp-unit">°C</span>
                 </div>
-                <div class="hero-condition">${conditionText}</div>
+                <div class="hero-condition">${weather.conditions[0]?.description || 'N/A'}</div>
                 <div class="hero-feels">Feels like ${Math.round(weather.feels_like)}°C · H:${Math.round(weather.temp_max)}° L:${Math.round(weather.temp_min)}°</div>
             </div>
-        <img class="hero-icon"
-             src="${weather.icon_url}"
-             alt="${conditionText}">
-            </div>
+            <img class="hero-icon" src="${weather.icon_url}" alt="${weather.conditions[0]?.description || 'weather'}">
+        </div>
         <div class="hero-sun-row">
             <div class="sun-item">
                 <span class="icon">🌅</span>
@@ -304,31 +499,32 @@ function renderHeroCard(weather) {
 }
 
 function renderMetrics(weather) {
+    window.lastWeatherData = weather;
     const windDir = getWindDirection(weather.wind_deg);
 
     document.getElementById('metrics-grid').innerHTML = `
         <div class="metric-item">
-            <div class="metric-label">💧 Humidity</div>
+            <div class="metric-label">${t('humidity')}</div>
             <div class="metric-value">${weather.humidity}<span class="metric-unit">%</span></div>
         </div>
         <div class="metric-item">
-            <div class="metric-label">💨 Wind</div>
+            <div class="metric-label">${t('wind')}</div>
             <div class="metric-value">${weather.wind_speed}<span class="metric-unit"> m/s ${windDir}</span></div>
         </div>
         <div class="metric-item">
-            <div class="metric-label">🌡️ Pressure</div>
+            <div class="metric-label">${t('pressure')}</div>
             <div class="metric-value">${weather.pressure}<span class="metric-unit"> hPa</span></div>
         </div>
         <div class="metric-item">
-            <div class="metric-label">👁️ Visibility</div>
+            <div class="metric-label">${t('visibility')}</div>
             <div class="metric-value">${(weather.visibility / 1000).toFixed(1)}<span class="metric-unit"> km</span></div>
         </div>
         <div class="metric-item">
-            <div class="metric-label">☁️ Clouds</div>
+            <div class="metric-label">${t('clouds')}</div>
             <div class="metric-value">${weather.clouds}<span class="metric-unit">%</span></div>
         </div>
         <div class="metric-item">
-            <div class="metric-label">🌡️ Feels Like</div>
+            <div class="metric-label">${t('feelsLike')}</div>
             <div class="metric-value">${Math.round(weather.feels_like)}<span class="metric-unit">°C</span></div>
         </div>
     `;
@@ -400,90 +596,33 @@ function renderDailyForecast(forecast) {
     }).join('');
 }
 
-// ── Map ────────────────────────────────────────────────────────
+// ── Map Location Selection ─────────────────────────────────────
 function renderMap(lat, lon, city) {
     if (!weatherMap) {
         weatherMap = L.map('weather-map').setView([lat, lon], 10);
-
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
             attribution: '&copy; OpenStreetMap contributors',
             className: 'map-tiles'
         }).addTo(weatherMap);
 
-        // Detect clicks on the map
-        weatherMap.on('click', async function (event) {
-            console.log('Map clicked!');
-            const clickedLat = event.latlng.lat;
-            const clickedLon = event.latlng.lng;
+        // Click on map to fetch weather data & real-time alerts for selected point
+        weatherMap.on('click', async (e) => {
+            const clickedLat = e.latlng.lat;
+            const clickedLon = e.latlng.lng;
 
-            const popup = L.popup()
-                .setLatLng([clickedLat, clickedLon])
-                .setContent('Loading weather...')
-                .openOn(weatherMap);
-
-            try {
-                const response = await fetch(
-                    `${API_BASE}/api/weather/current?lat=${clickedLat}&lon=${clickedLon}`
-                );
-
-                if (!response.ok) {
-                    throw new Error('Weather request failed');
-                }
-
-                const weather = await response.json();
-
-                const condition =
-                    weather.conditions?.[0]?.description || 'N/A';
-
-                popup.setContent(`
-    <div class="map-weather-popup">
-        <h3>${weather.city || 'Selected location'}</h3>
-
-        <p><strong>Temperature:</strong> ${Math.round(weather.temperature)}°C</p>
-        <p><strong>Condition:</strong> ${condition}</p>
-        <p><strong>Humidity:</strong> ${weather.humidity}%</p>
-        <p><strong>Wind:</strong> ${weather.wind_speed} m/s</p>
-
-        <button id="ask-map-weather">
-    Ask Chatbot
-</button>
-    </div>
-`);
-
-                document
-                    .getElementById('ask-map-weather')
-                    ?.addEventListener('click', () => {
-                        console.log("ASK CHATBOT BUTTON CLICKED");
-                        if (typeof window.openWeatherChat === 'function') {
-                            window.openWeatherChat();
-                        } else {
-                            console.error('openWeatherChat is not available.');
-                            return;
-                        }
-                        const question = `
-Give me detailed weather information for ${weather.city || 'this selected location'}.
-The current temperature is ${weather.temperature}°C.
-The condition is ${condition}.
-Humidity is ${weather.humidity}%.
-Wind speed is ${weather.wind_speed} m/s.
-
-Explain the weather in simple language and give useful precautions.
-        `.trim();
-
-                        if (typeof window.sendMessage === 'function') {
-                            window.sendMessage(question);
-                        } else {
-                            console.error('Chatbot sendMessage function is not available.');
-                        }
-
-                    });
-            } catch (error) {
-                console.error('Map weather error:', error);
-
-                popup.setContent(
-                    'Unable to load weather for this location.'
-                );
+            if (mapMarker) {
+                mapMarker.setLatLng([clickedLat, clickedLon])
+                         .bindPopup(`
+                            <div style="font-family: sans-serif; text-align: center; padding: 4px;">
+                                <b style="color: #0284c7;">📍 Selected Map Location</b><br>
+                                <span style="font-size: 0.8rem; color: #64748b;">Lat: ${clickedLat.toFixed(4)}, Lon: ${clickedLon.toFixed(4)}</span><br>
+                                <span style="font-size: 0.75rem; color: #f59e0b; font-weight: 600;">Fetching weather & alerts...</span>
+                            </div>
+                         `)
+                         .openPopup();
             }
+
+            await loadWeather(clickedLat, clickedLon);
         });
     } else {
         weatherMap.setView([lat, lon], 10);
@@ -493,9 +632,14 @@ Explain the weather in simple language and give useful precautions.
         weatherMap.removeLayer(mapMarker);
     }
 
-    mapMarker = L.marker([lat, lon])
-        .addTo(weatherMap)
-        .bindPopup(`<b>${city}</b>`)
+    mapMarker = L.marker([lat, lon]).addTo(weatherMap)
+        .bindPopup(`
+            <div style="font-family: sans-serif; text-align: center; padding: 4px;">
+                <b style="font-size: 1rem; color: #0f172a;">${city}</b><br>
+                <span style="font-size: 0.8rem; color: #64748b;">Lat: ${lat.toFixed(4)}, Lon: ${lon.toFixed(4)}</span><br>
+                <span style="font-size: 0.75rem; color: #10b981; font-weight: 600;">✓ Active Location Selected</span>
+            </div>
+        `)
         .openPopup();
 
     setTimeout(() => {
@@ -503,57 +647,55 @@ Explain the weather in simple language and give useful precautions.
     }, 100);
 }
 
-// ── Alerts ─────────────────────────────────────────────────────
+// ── Real-Time Alerts ───────────────────────────────────────────
 function renderAlerts(alerts) {
     const container = document.getElementById('alerts-container');
     const countBadge = document.getElementById('alerts-count');
-
-    if (!container || !countBadge) {
-        return;
-    }
 
     if (!alerts || alerts.length === 0) {
         container.innerHTML = `
             <div class="no-alerts">
                 <div class="no-alerts-icon">✅</div>
-                <div class="no-alerts-text">
-                    No active weather alerts for this area
-                </div>
+                <div class="no-alerts-text">No extreme weather alerts active for this location</div>
             </div>
         `;
-
         countBadge.textContent = '';
         countBadge.style.display = 'none';
         return;
     }
 
-    countBadge.textContent = alerts.length;
+    countBadge.textContent = `${alerts.length} Alert${alerts.length > 1 ? 's' : ''}`;
     countBadge.style.display = 'inline-flex';
 
+    // Determine highest severity for badge color
+    const hasRed = alerts.some(a => a.severity.toLowerCase() === 'red');
+    const hasOrange = alerts.some(a => a.severity.toLowerCase() === 'orange');
+    
+    if (hasRed) {
+        countBadge.className = 'alert-badge red';
+    } else if (hasOrange) {
+        countBadge.className = 'alert-badge orange';
+    } else {
+        countBadge.className = 'alert-badge yellow';
+    }
+
     container.innerHTML = alerts.map(alert => {
-        const severity = (alert.severity || 'yellow').toLowerCase();
-        const title = alert.title || 'Weather Alert';
-        const message = alert.message || 'Please stay updated.';
+        const severity = alert.severity.toLowerCase();
+        const severityIcon = severity === 'red' ? '🔴' : severity === 'orange' ? '🟠' : '🟡';
+        const startTime = new Date(alert.start * 1000).toLocaleString();
+        const endTime = new Date(alert.end * 1000).toLocaleString();
 
         return `
             <div class="alert-item ${severity}">
                 <div class="alert-header">
-                    <span class="alert-badge ${severity}">
-                        ${title}
-                    </span>
-
-                    <span class="alert-event">
-                        ${severity.toUpperCase()}
-                    </span>
+                    <span class="alert-badge ${severity}">${alert.severity}</span>
+                    <span class="alert-event">${alert.event}</span>
                 </div>
-
-                <div class="alert-description">
-                    ${message}
-                </div>
+                <div class="alert-time">⏱️ ${startTime} — ${endTime}</div>
+                <div class="alert-description">${alert.description.substring(0, 200)}${alert.description.length > 200 ? '...' : ''}</div>
             </div>
         `;
     }).join('');
-    console.log("NEW renderAlerts is running");
 }
 
 // ── Utility Functions ──────────────────────────────────────────
@@ -577,4 +719,318 @@ function loadQuickCity(city) {
     loadWeatherByCity(city);
 }
 
+// ── Visibility Graph ───────────────────────────────────────────
+function renderVisibilityGraph(weather, forecast) {
+    const currentVisKm = (weather.visibility / 1000).toFixed(1);
+    
+    // Process forecast items (next 12 intervals = 36 hours)
+    const items = forecast.items ? forecast.items.slice(0, 12) : [];
+    const labels = [];
+    const dataVis = [];
 
+    items.forEach(item => {
+        const time = new Date(item.date_text.replace(' ', 'T') + 'Z');
+        const hours = time.getUTCHours();
+        const ampm = hours >= 12 ? 'PM' : 'AM';
+        const displayHour = hours % 12 || 12;
+        labels.push(`${displayHour} ${ampm}`);
+        
+        const visKm = item.visibility ? (item.visibility / 1000) : (weather.visibility / 1000);
+        dataVis.push(parseFloat(visKm.toFixed(1)));
+    });
+
+    if (dataVis.length === 0) {
+        dataVis.push(parseFloat(currentVisKm));
+        labels.push('Now');
+    }
+
+    const minVis = Math.min(...dataVis).toFixed(1);
+    const maxVis = Math.max(...dataVis).toFixed(1);
+    const avgVis = (dataVis.reduce((a, b) => a + b, 0) / dataVis.length).toFixed(1);
+
+    document.getElementById('vis-current').textContent = `${currentVisKm} km`;
+    document.getElementById('vis-min').textContent = `${minVis} km`;
+    document.getElementById('vis-max').textContent = `${maxVis} km`;
+    document.getElementById('vis-avg').textContent = `${avgVis} km`;
+
+    // Status badge description
+    const statusTextEl = document.getElementById('visibility-status-text');
+    let statusLabel = 'Excellent Sight';
+
+    if (currentVisKm >= 10) {
+        statusLabel = `${currentVisKm} km (Excellent Sight)`;
+    } else if (currentVisKm >= 6) {
+        statusLabel = `${currentVisKm} km (Good Sight)`;
+    } else if (currentVisKm >= 3) {
+        statusLabel = `${currentVisKm} km (Moderate Haze)`;
+    } else {
+        statusLabel = `${currentVisKm} km (Low Sight / Fog)`;
+    }
+
+    if (statusTextEl) {
+        statusTextEl.textContent = statusLabel;
+    }
+
+    // Canvas & Chart rendering
+    const ctx = document.getElementById('visibility-chart');
+    if (!ctx) return;
+
+    if (typeof Chart === 'undefined') {
+        console.warn('Chart.js library is not loaded');
+        return;
+    }
+
+    if (visibilityChart) {
+        visibilityChart.destroy();
+    }
+
+    const canvasCtx = ctx.getContext('2d');
+    const gradient = canvasCtx.createLinearGradient(0, 0, 0, 240);
+    gradient.addColorStop(0, 'rgba(6, 182, 212, 0.45)');
+    gradient.addColorStop(1, 'rgba(6, 182, 212, 0.02)');
+
+    visibilityChart = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: labels,
+            datasets: [{
+                label: 'Visibility (km)',
+                data: dataVis,
+                borderColor: '#06b6d4',
+                borderWidth: 3,
+                pointBackgroundColor: '#38bdf8',
+                pointBorderColor: '#ffffff',
+                pointRadius: 4,
+                pointHoverRadius: 6,
+                fill: true,
+                backgroundColor: gradient,
+                tension: 0.35,
+            }]
+        },
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: { display: false },
+                tooltip: {
+                    callbacks: {
+                        label: (context) => `Visibility: ${context.parsed.y} km`
+                    },
+                    backgroundColor: 'rgba(17, 24, 39, 0.95)',
+                    titleColor: '#60a5fa',
+                    bodyColor: '#f9fafb',
+                    borderColor: 'rgba(255, 255, 255, 0.15)',
+                    borderWidth: 1,
+                    padding: 10,
+                }
+            },
+            scales: {
+                x: {
+                    grid: { color: 'rgba(255, 255, 255, 0.05)' },
+                    ticks: { color: '#9ca3af', font: { family: 'Inter', size: 11 } }
+                },
+                y: {
+                    suggestedMin: 0,
+                    suggestedMax: 10,
+                    grid: { color: 'rgba(255, 255, 255, 0.05)' },
+                    ticks: {
+                        color: '#9ca3af',
+                        font: { family: 'Inter', size: 11 },
+                        callback: (val) => `${val} km`
+                    }
+                }
+            }
+        }
+    });
+}
+
+// ── Voice Search Assistant ─────────────────────────────────────
+function setupVoiceSearch() {
+    const voiceSearchBtn = document.getElementById('voice-search-btn');
+    if (!voiceSearchBtn) return;
+
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+    if (!SpeechRecognition) {
+        voiceSearchBtn.title = "Voice recognition not supported in this browser";
+        voiceSearchBtn.style.opacity = "0.5";
+        return;
+    }
+
+    const recognition = new SpeechRecognition();
+    recognition.continuous = false;
+    recognition.interimResults = false;
+    recognition.lang = 'en-US';
+
+    let isListening = false;
+
+    voiceSearchBtn.addEventListener('click', () => {
+        if (isListening) {
+            recognition.stop();
+            return;
+        }
+
+        try {
+            recognition.start();
+            isListening = true;
+            voiceSearchBtn.classList.add('recording');
+            voiceSearchBtn.title = "Listening... Speak city name";
+        } catch (err) {
+            console.error("Speech recognition error:", err);
+        }
+    });
+
+    recognition.onresult = (event) => {
+        const transcript = event.results[0][0].transcript.trim();
+        if (transcript) {
+            searchBar.value = transcript;
+            searchCities(transcript);
+            loadWeatherByCity(transcript);
+        }
+    };
+
+    recognition.onend = () => {
+        isListening = false;
+        voiceSearchBtn.classList.remove('recording');
+        voiceSearchBtn.title = "Voice Search (Speak city name)";
+    };
+
+    recognition.onerror = (event) => {
+        console.warn("Voice search error:", event.error);
+        isListening = false;
+        voiceSearchBtn.classList.remove('recording');
+    };
+}
+
+// ── Weather Breakdown Pie Charts ───────────────────────────────
+function renderWeatherPieCharts(weather, forecast) {
+    if (typeof Chart === 'undefined') return;
+
+    // 1. Forecast Condition Breakdown
+    const condCounts = {};
+    if (forecast && forecast.items) {
+        forecast.items.forEach(item => {
+            const main = item.conditions && item.conditions[0] ? item.conditions[0].main : 'Clear';
+            condCounts[main] = (condCounts[main] || 0) + 1;
+        });
+    } else if (weather.conditions && weather.conditions[0]) {
+        condCounts[weather.conditions[0].main] = 1;
+    } else {
+        condCounts['Clear'] = 1;
+    }
+
+    const labelsCond = Object.keys(condCounts);
+    const dataCond = Object.values(condCounts);
+
+    const colorMap = {
+        'Clear': '#f59e0b',
+        'Clouds': '#38bdf8',
+        'Rain': '#3b82f6',
+        'Drizzle': '#06b6d4',
+        'Thunderstorm': '#8b5cf6',
+        'Snow': '#e0e7ff',
+        'Mist': '#94a3b8',
+        'Fog': '#64748b',
+        'Haze': '#cbd5e1'
+    };
+
+    const bgColorsCond = labelsCond.map(l => colorMap[l] || '#60a5fa');
+
+    const ctx1 = document.getElementById('condition-pie-chart');
+    if (ctx1) {
+        if (conditionPieChart) conditionPieChart.destroy();
+
+        conditionPieChart = new Chart(ctx1, {
+            type: 'doughnut',
+            data: {
+                labels: labelsCond,
+                datasets: [{
+                    data: dataCond,
+                    backgroundColor: bgColorsCond,
+                    borderColor: 'rgba(17, 24, 39, 0.8)',
+                    borderWidth: 2,
+                    hoverOffset: 6
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'right',
+                        labels: {
+                            color: '#9ca3af',
+                            font: { family: 'Inter', size: 11 },
+                            boxWidth: 12
+                        }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: (context) => {
+                                const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                const pct = Math.round((context.parsed / total) * 100);
+                                return ` ${context.label}: ${pct}% (${context.parsed} intervals)`;
+                            }
+                        },
+                        backgroundColor: 'rgba(17, 24, 39, 0.95)',
+                        borderColor: 'rgba(255, 255, 255, 0.1)',
+                        borderWidth: 1
+                    }
+                },
+                cutout: '58%'
+            }
+        });
+    }
+
+    // 2. Atmospheric & Cloud Composition
+    const humidity = weather.humidity || 0;
+    const cloudCover = weather.clouds || 0;
+    const clearSkyRatio = Math.max(0, 100 - cloudCover);
+    const rainProb = Math.round((forecast && forecast.items && forecast.items[0] ? forecast.items[0].pop : 0) * 100);
+
+    const labelsAtm = ['Humidity (%)', 'Cloud Cover (%)', 'Clear Atmosphere (%)', 'Rain Chance (%)'];
+    const dataAtm = [humidity, cloudCover, clearSkyRatio, rainProb];
+    const bgColorsAtm = ['#06b6d4', '#94a3b8', '#f59e0b', '#3b82f6'];
+
+    const ctx2 = document.getElementById('atmospheric-pie-chart');
+    if (ctx2) {
+        if (atmosphericPieChart) atmosphericPieChart.destroy();
+
+        atmosphericPieChart = new Chart(ctx2, {
+            type: 'doughnut',
+            data: {
+                labels: labelsAtm,
+                datasets: [{
+                    data: dataAtm,
+                    backgroundColor: bgColorsAtm,
+                    borderColor: 'rgba(17, 24, 39, 0.8)',
+                    borderWidth: 2,
+                    hoverOffset: 6
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'right',
+                        labels: {
+                            color: '#9ca3af',
+                            font: { family: 'Inter', size: 11 },
+                            boxWidth: 12
+                        }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: (context) => ` ${context.label}: ${context.parsed}%`
+                        },
+                        backgroundColor: 'rgba(17, 24, 39, 0.95)',
+                        borderColor: 'rgba(255, 255, 255, 0.1)',
+                        borderWidth: 1
+                    }
+                },
+                cutout: '58%'
+            }
+        });
+    }
+}
